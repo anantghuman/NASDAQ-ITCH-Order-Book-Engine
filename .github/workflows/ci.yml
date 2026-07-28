@@ -1,0 +1,45 @@
+name: C++ CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DLOB_WARNINGS_AS_ERRORS=ON
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  sanitizers:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build-sanitize -DCMAKE_BUILD_TYPE=Debug -DLOB_ENABLE_SANITIZERS=ON -DLOB_WARNINGS_AS_ERRORS=ON
+      - name: Build
+        run: cmake --build build-sanitize --parallel
+      - name: Test
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: ctest --test-dir build-sanitize --output-on-failure
+
+  thread-sanitizer:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build-tsan -DCMAKE_BUILD_TYPE=Debug -DLOB_ENABLE_TSAN=ON -DLOB_WARNINGS_AS_ERRORS=ON
+      - name: Build
+        run: cmake --build build-tsan --parallel
+      - name: Test
+        env:
+          TSAN_OPTIONS: halt_on_error=1
+        run: ctest --test-dir build-tsan --output-on-failure
